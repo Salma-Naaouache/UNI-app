@@ -19,7 +19,7 @@ COPY package*.json ./
 
 # Installer UNIQUEMENT les dépendances de production
 # --only=production: N'installe pas les dépendances de développement (comme jest)
-RUN npm ci --only=production
+RUN npm ci
 
 # ================= ÉTAPE 2: RUNTIME (Application) =================
 # Cette étape contient uniquement ce qui est nécessaire pour exécuter l'app
