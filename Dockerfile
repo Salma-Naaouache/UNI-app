@@ -46,8 +46,8 @@ COPY public ./public       # Fichiers statiques (HTML, CSS)
 # ================= SÉCURITÉ: Utilisateur non-root =================
 # Créer un groupe et un utilisateur pour exécuter l'app
 # C'est une bonne pratique de sécurité (sinon l'app s'exécute en root)
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+#RUN addgroup -g 1001 -S nodejs && \
+ #   adduser -S nodejs -u 1001
 
 # Passer au nouvel utilisateur non-privilégié
 USER nodejs
