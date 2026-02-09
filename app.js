@@ -1,27 +1,50 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const path = require('path');
-const StudentManager = require('./students');
+/**
+ * SERVEUR EXPRESS - Gestion des étudiants
+ * 
+ * Ce fichier initialise le serveur Express qui fournit une API REST
+ * pour gérer les étudiants et sert l'interface web HTML
+ */
 
+// Dépendances
+const express = require('express');         // Framework web
+const bodyParser = require('body-parser');  // Parser pour les données POST/PUT
+const path = require('path');               // Utilitaire pour les chemins de fichiers
+const StudentManager = require('./students'); // Logique métier
+
+// Initialiser l'application Express
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;  // Port du serveur (par défaut 3000)
 
-// Middleware
+/**
+ * MIDDLEWARE - Étapes intermédiaires du traitement des requêtes
+ */
+// Convertir les body JSON en objets JavaScript
 app.use(bodyParser.json());
+// Convertir les données de formulaires URL-encodées
 app.use(bodyParser.urlencoded({ extended: true }));
+// Servir les fichiers statiques (HTML, CSS, JS) depuis le dossier 'public'
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Initialiser le gestionnaire d'étudiants
+// Créer une instance du gestionnaire d'étudiants
 const studentManager = new StudentManager();
 
-// Routes
+/**
+ * ==================== ROUTES DE L'API =====================
+ * Format REST: HTTP Verbs (GET, POST, PUT, DELETE)
+ * Endpoints: /api/students
+ */
 
-// GET - Page d'accueil
+/**
+ * GET / - Retourner la page d'accueil (index.html)
+ */
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// GET - Obtenir tous les étudiants
+/**
+ * GET /api/students - Récupérer TOUS les étudiants
+ * Réponse: Array [{ id, name, email, phone, specialty, createdAt }, ...]
+ */
 app.get('/api/students', (req, res) => {
   try {
     const students = studentManager.getAllStudents();
@@ -31,7 +54,10 @@ app.get('/api/students', (req, res) => {
   }
 });
 
-// GET - Obtenir un étudiant par ID
+/**
+ * GET /api/students/:id - Récupérer UN étudiant par son ID
+ * Réponse: { id, name, email, phone, specialty, createdAt }
+ */
 app.get('/api/students/:id', (req, res) => {
   try {
     const student = studentManager.getStudentById(req.params.id);
@@ -44,18 +70,26 @@ app.get('/api/students/:id', (req, res) => {
   }
 });
 
-// POST - Ajouter un nouvel étudiant
+/**
+ * POST /api/students - CRÉER un nouvel étudiant
+ * Body: { name, email, phone?, specialty? }
+ * Réponse: { id, name, email, phone, specialty, createdAt }
+ */
 app.post('/api/students', (req, res) => {
   try {
     const { name, email, phone, specialty } = req.body;
     const student = studentManager.addStudent(name, email, phone, specialty);
-    res.status(201).json(student);
+    res.status(201).json(student);  // 201 = Créé avec succès
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: error.message });  // 400 = Mauvaise requête
   }
 });
 
-// PUT - Mettre à jour un étudiant
+/**
+ * PUT /api/students/:id - REMPLACER complètement un étudiant
+ * Body: { name, email, phone, specialty }
+ * Réponse: L'étudiant mis à jour
+ */
 app.put('/api/students/:id', (req, res) => {
   try {
     const student = studentManager.updateStudent(req.params.id, req.body);
@@ -65,7 +99,11 @@ app.put('/api/students/:id', (req, res) => {
   }
 });
 
-// PATCH - Modifier un étudiant (avec bug intentionnel)
+/**
+ * PATCH /api/students/:id - MODIFIER partiellement un étudiant
+ * Body: { name?, email?, phone?, specialty? } (tous optionnels)
+ * Réponse: L'étudiant modifié
+ */
 app.patch('/api/students/:id', (req, res) => {
   try {
     const student = studentManager.modifyStudent(req.params.id, req.body);
@@ -75,7 +113,10 @@ app.patch('/api/students/:id', (req, res) => {
   }
 });
 
-// DELETE - Supprimer un étudiant
+/**
+ * DELETE /api/students/:id - SUPPRIMER un étudiant
+ * Réponse: { message, student } avec les infos de l'étudiant supprimé
+ */
 app.delete('/api/students/:id', (req, res) => {
   try {
     const student = studentManager.deleteStudent(req.params.id);
@@ -85,7 +126,10 @@ app.delete('/api/students/:id', (req, res) => {
   }
 });
 
-// GET - Rechercher les étudiants par nom
+/**
+ * GET /api/students/search/:name - RECHERCHER des étudiants par nom
+ * Réponse: Array des étudiants correspondants
+ */
 app.get('/api/students/search/:name', (req, res) => {
   try {
     const students = studentManager.searchByName(req.params.name);
@@ -95,14 +139,21 @@ app.get('/api/students/search/:name', (req, res) => {
   }
 });
 
-// Gestion des erreurs 404
+/**
+ * GESTION DES ERREURS 404
+ * Route "attrape-tout" pour les chemins non trouvés
+ */
 app.use((req, res) => {
   res.status(404).json({ error: 'Route non trouvée' });
 });
 
-// Démarrer le serveur
+/**
+ * DÉMARRAGE DU SERVEUR
+ * Écoute les requêtes sur le PORT spécifié
+ */
 const server = app.listen(PORT, () => {
   console.log(`Serveur en écoute sur http://localhost:${PORT}`);
 });
 
+// Exporter l'app et le gestionnaire pour les tests
 module.exports = { app, studentManager };

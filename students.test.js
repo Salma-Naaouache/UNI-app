@@ -163,8 +163,8 @@ describe('StudentManager', () => {
     });
   });
 
-  // Tests pour modifyStudent (avec bug intentionnel)
-  describe('modifyStudent (avec bug intentionnel)', () => {
+  // Tests pour modifyStudent (corrigé - bug supprimé)
+  describe('modifyStudent (corrigé)', () => {
     test('devrait modifier le nom d\'un étudiant', () => {
       manager.addStudent('Jean', 'jean@example.com', '0612345678', 'Informatique');
       const modified = manager.modifyStudent(1, { name: 'Jean Martin' });
@@ -172,28 +172,30 @@ describe('StudentManager', () => {
       expect(modified.name).toBe('Jean Martin');
     });
 
-    test('BUG: ne devrait pas swapper email et specialty', () => {
+    test('devrait modifier correctement l\'email et la specialty', () => {
       manager.addStudent('Jean', 'jean@example.com', '0612345678', 'Informatique');
       const modified = manager.modifyStudent(1, { 
         email: 'newemail@example.com',
         specialty: 'Chimie'
       });
 
-      // CES ASSERTIONS VONT ÉCHOUER À CAUSE DU BUG!
-      expect(modified.email).toBe('newemail@example.com');  // FAIL: email sera 'Chimie'
-      expect(modified.specialty).toBe('Chimie');  // FAIL: specialty sera 'newemail@example.com'
+      expect(modified.email).toBe('newemail@example.com');
+      expect(modified.specialty).toBe('Chimie');
     });
 
-    test('BUG: vérifier le bug - email et specialty sont swappés', () => {
+    test('devrait modifier tous les champs correctement', () => {
       manager.addStudent('Marie', 'marie@example.com', '0698765432', 'Mathématiques');
       const modified = manager.modifyStudent(1, { 
-        email: 'marie.new@example.com',
-        specialty: 'Physique'
+        name: 'Marie Dupont',
+        email: 'marie.dupont@example.com',
+        specialty: 'Physique',
+        phone: '0712345678'
       });
 
-      // Le bug: email va dans specialty et vice versa
-      expect(modified.specialty).toBe('marie.new@example.com');  // Bug produit: email va dans specialty
-      expect(modified.email).toBe('Physique');  // Bug produit: specialty va dans email
+      expect(modified.name).toBe('Marie Dupont');
+      expect(modified.email).toBe('marie.dupont@example.com');
+      expect(modified.specialty).toBe('Physique');
+      expect(modified.phone).toBe('0712345678');
     });
 
     test('devrait modifier le téléphone correctement', () => {

@@ -1,0 +1,126 @@
+################################################################################
+# GitLab CI/CD Pipeline Configuration
+#
+# Ce fichier définit tous les stages et jobs du pipeline d'intégration continue
+# Il automatise: Build → Test → Docker → Deploy
+################################################################################
+
+# ================= DÉFINITION DES STAGES =================
+# Les stages s'exécutent séquentiellement
+# Un pipeline échoue si un job d'un stage échoue
+stages:
+  - build      # Étape 1: Construction et préparation du projet
+  - test       # Étape 2: Lancer les tests
+  - docker     # Étape 3: Créer l'image Docker et la pousser au registre
+  - deploy     # Étape 4: Déployer l'application en production
+
+# ================= VARIABLES GLOBALES =================
+# Variables disponibles dans tous les jobs
+variables:
+  REGISTRY: docker.io                    # Registre Docker (Docker Hub)
+  IMAGE_NAME: uni-app                    # Nom de l'image Docker
+  DOCKER_DRIVER: overlay2                # Driver Docker pour les images
+  DOCKER_TLS_CERTDIR: "/certs"          # Certificats TLS pour Docker-in-Docker
+
+################################################################################
+# JOB 1: BUILD
+# Construit le projet et télécharge les dépendances
+################################################################################
+build:
+  stage: build                           # Étape: build
+  image: node:18                         # Image Docker avec Node.js 18
+  script:
+    # Installer les dépendances npm
+    - npm install
+    # Log de succès
+    - echo "Build completed successfully"
+  # Artifacts: Fichiers à conserver pour les stages suivants
+  artifacts:
+    paths:
+      - node_modules/                   # Sauvegarder les dépendances installées
+    expire_in: 1 hour                   # Garder 1 heure (durée du pipeline)
+  # Cache: Accélère les builds futurs
+  cache:
+    paths:
+      - node_modules/
+
+################################################################################
+# JOB 2: TEST
+# Lance les tests unitaires (Jest)
+################################################################################
+test:
+  stage: test                            # Étape: test
+  image: node:18                         # Node.js 18
+  dependencies:
+    - build                              # Dépend du job 'build' pour node_modules
+  script:
+    # Réinstaller les dépendances (au cas où)
+    - npm install
+    # Lancer les tests Jest
+    - npm test
+  # Chercher la couverture de code dans la sortie
+  coverage: '/TOTAL.*?(\d+)%/'
+
+################################################################################
+# JOB 3: DOCKER BUILD
+# Construit l'image Docker et la pousse au registre
+################################################################################
+docker_build:
+  stage: docker                          # Étape: docker
+  image: docker:20.10.16                 # Image Docker avec CLI Docker
+  services:
+    # Service Docker-in-Docker (permet de builder Docker dans Docker)
+    - docker:20.10.16-dind
+  before_script:
+    # Se connecter au registre Docker Hub
+    # $DOCKER_PASSWORD et $DOCKER_USERNAME: Variables secrètes GitLab
+    - echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+  script:
+    # Construire l'image avec les tags:
+    # 1. Tag avec SHA du commit (pour traçabilité)
+    - docker build -t $REGISTRY/$DOCKER_USERNAME/$IMAGE_NAME:$CI_COMMIT_SHA .
+    # 2. Tag comme "latest" (dernière version)
+    - docker tag $REGISTRY/$DOCKER_USERNAME/$IMAGE_NAME:$CI_COMMIT_SHA $REGISTRY/$DOCKER_USERNAME/$IMAGE_NAME:latest
+    # Pousser les deux tags vers Docker Hub
+    - docker push $REGISTRY/$DOCKER_USERNAME/$IMAGE_NAME:$CI_COMMIT_SHA
+    - docker push $REGISTRY/$DOCKER_USERNAME/$IMAGE_NAME:latest
+  # Ne s'exécuter que sur certaines branches
+  only:
+    - main      # Branche main
+    - master    # Branche master (anciennes conventions)
+
+################################################################################
+# JOB 4: DEPLOY
+# Déploie l'application en production
+# Ici c'est juste un exemple/placeholder
+################################################################################
+deploy:
+  stage: deploy                          # Étape: deploy
+  image: alpine:latest                   # Image légère Alpine Linux
+  script:
+    # Afficher les infos du déploiement
+    - echo "Deployment would happen here"
+    - echo "Docker image pushed: $REGISTRY/$DOCKER_USERNAME/$IMAGE_NAME:latest"
+  # Ne s'exécuter que sur les branches main/master
+  only:
+    - main
+    - master
+  # when: manual = Ne s'exécute que si déclenché manuellement dans GitLab
+  when: manual
+
+################################################################################
+# FLUX COMPLET:
+# 
+# 1. Push sur main/master → Pipeline déclenché automatiquement
+# 2. BUILD: npm install, télécharge les dépendances
+# 3. TEST: npm test, lance Jest, collecte la couverture
+# 4. DOCKER: Construit l'image et la pousse à Docker Hub
+# 5. DEPLOY: En attente de déclenchement manuel
+#
+# VARIABLES D'ENVIRONNEMENT À CONFIGURER DANS GITLAB:
+# - DOCKER_USERNAME: Votre username Docker Hub
+# - DOCKER_PASSWORD: Votre token/password Docker Hub
+#
+# URL du pipeline: https://gitlab.com/votre-username/UNI-app/-/pipelines
+################################################################################
+

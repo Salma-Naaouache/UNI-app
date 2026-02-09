@@ -327,19 +327,36 @@
   </div>
 
   <script>
-    // Charger les étudiants au chargement de la page
+    /**
+     * ============================================
+     * APPLICATION DE GESTION DES ÉTUDIANTS
+     * Frontend JavaScript
+     * ============================================
+     * Ce script gère toutes les interactions avec l'API backend
+     */
+
+    /**
+     * ÉVÉNEMENT: DOMContentLoaded
+     * Déclenché quand la page HTML est complètement chargée
+     * Charge initialement la liste des étudiants
+     */
     document.addEventListener('DOMContentLoaded', loadStudents);
 
-    // Gérer la soumission du formulaire
+    /**
+     * ÉVÉNEMENT: Soumission du formulaire d'ajout
+     * Lance la création d'un nouvel étudiant à chaque submit
+     */
     document.getElementById('addStudentForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
+      e.preventDefault();  // Empêcher le rechargement de la page
 
+      // Récupérer les valeurs du formulaire
       const name = document.getElementById('name').value;
       const email = document.getElementById('email').value;
       const phone = document.getElementById('phone').value;
       const specialty = document.getElementById('specialty').value;
 
       try {
+        // Envoyer une requête POST au serveur
         const response = await fetch('/api/students', {
           method: 'POST',
           headers: {
@@ -348,42 +365,58 @@
           body: JSON.stringify({ name, email, phone, specialty })
         });
 
+        // Vérifier si la requête a réussi
         if (!response.ok) {
           const error = await response.json();
           throw new Error(error.error);
         }
 
+        // Afficher un message de succès
         showAlert('Étudiant ajouté avec succès!', 'success');
+        // Effacer le formulaire
         document.getElementById('addStudentForm').reset();
+        // Rafraîchir la liste des étudiants
         loadStudents();
       } catch (error) {
         showAlert('Erreur: ' + error.message, 'error');
       }
     });
 
-    // Charger tous les étudiants
+    /**
+     * FONCTION: loadStudents()
+     * Récupère TOUS les étudiants du serveur et les affiche
+     */
     async function loadStudents() {
       try {
+        // Requête GET pour obtenir tous les étudiants
         const response = await fetch('/api/students');
         if (!response.ok) throw new Error('Erreur lors du chargement');
 
         const students = await response.json();
+        // Afficher les étudiants dans le tableau
         displayStudents(students);
+        // Mettre à jour le compteur
         updateStudentCount(students.length);
       } catch (error) {
         showAlert('Erreur: ' + error.message, 'error');
       }
     }
 
-    // Afficher les étudiants dans le tableau
+    /**
+     * FONCTION: displayStudents(students)
+     * Affiche l'array d'étudiants dans le tableau HTML
+     * Utilise les attributs data-* pour éviter les problèmes de parsing
+     */
     function displayStudents(students) {
       const tbody = document.getElementById('studentsList');
 
+      // Si pas d'étudiants, afficher un message vide
       if (students.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" class="empty-message">Aucun étudiant pour le moment</td></tr>';
         return;
       }
 
+      // Générer le HTML pour chaque étudiant
       tbody.innerHTML = students.map(student => `
         <tr>
           <td>${student.id}</td>
@@ -394,19 +427,42 @@
           <td>${new Date(student.createdAt).toLocaleDateString('fr-FR')}</td>
           <td>
             <div class="action-buttons">
-              <button class="btn-modify" onclick="openModifyModal(${student.id}, '${student.name}', '${student.email}', '${student.phone}', '${student.specialty}')">Modifier</button>
+              <!-- Bouton Modifier avec attributs data-* -->
+              <button class="btn-modify" data-id="${student.id}" data-name="${student.name.replace(/"/g, '&quot;')}" data-email="${student.email.replace(/"/g, '&quot;')}" data-phone="${(student.phone || '').replace(/"/g, '&quot;')}" data-specialty="${(student.specialty || '').replace(/"/g, '&quot;')}">Modifier</button>
+              <!-- Bouton Supprimer -->
               <button class="btn-delete" onclick="deleteStudent(${student.id})">Supprimer</button>
             </div>
           </td>
         </tr>
       `).join('');
+
+      /**
+       * Ajouter les event listeners aux boutons Modifier
+       * Cela évite les problèmes avec les caractères spéciaux dans les noms/emails
+       */
+      document.querySelectorAll('.btn-modify').forEach(btn => {
+        btn.addEventListener('click', function() {
+          // Récupérer les données stockées dans les attributs
+          const id = this.getAttribute('data-id');
+          const name = this.getAttribute('data-name');
+          const email = this.getAttribute('data-email');
+          const phone = this.getAttribute('data-phone');
+          const specialty = this.getAttribute('data-specialty');
+          openModifyModal(id, name, email, phone, specialty);
+        });
+      });
     }
 
-    // Supprimer un étudiant
+    /**
+     * FONCTION: deleteStudent(id)
+     * Supprime un étudiant spécifique
+     */
     async function deleteStudent(id) {
+      // Demander confirmation avant suppression
       if (!confirm('Êtes-vous sûr de vouloir supprimer cet étudiant?')) return;
 
       try {
+        // Requête DELETE
         const response = await fetch(`/api/students/${id}`, {
           method: 'DELETE'
         });
@@ -414,22 +470,27 @@
         if (!response.ok) throw new Error('Erreur lors de la suppression');
 
         showAlert('Étudiant supprimé avec succès!', 'success');
-        loadStudents();
+        loadStudents();  // Rafraîchir la liste
       } catch (error) {
         showAlert('Erreur: ' + error.message, 'error');
       }
     }
 
-    // Rechercher les étudiants
+    /**
+     * FONCTION: searchStudents()
+     * Recherche les étudiants par nom
+     */
     async function searchStudents() {
       const searchTerm = document.getElementById('searchInput').value;
 
+      // Si le champ est vide, afficher tous les étudiants
       if (!searchTerm) {
         loadStudents();
         return;
       }
 
       try {
+        // Requête GET avec le terme de recherche
         const response = await fetch(`/api/students/search/${encodeURIComponent(searchTerm)}`);
         if (!response.ok) throw new Error('Erreur lors de la recherche');
 
@@ -441,25 +502,37 @@
       }
     }
 
-    // Mettre à jour le compteur d'étudiants
+    /**
+     * FONCTION: updateStudentCount(count)
+     * Met à jour le compteur d'étudiants affichés
+     */
     function updateStudentCount(count) {
       document.getElementById('studentCount').textContent = count;
     }
 
-    // Afficher une alerte
+    /**
+     * FONCTION: showAlert(message, type)
+     * Affiche un message d'alerte temporaire (succès ou erreur)
+     */
     function showAlert(message, type) {
       const container = document.getElementById('alertContainer');
       const alertDiv = document.createElement('div');
       alertDiv.className = `alert alert-${type}`;
       alertDiv.textContent = message;
 
+      // Vider les anciennes alertes
       container.innerHTML = '';
       container.appendChild(alertDiv);
 
+      // Supprimer l'alerte après 5 secondes
       setTimeout(() => alertDiv.remove(), 5000);
     }
 
-    // Ouvrir le modal de modification
+    /**
+     * FONCTION: openModifyModal()
+     * Ouvre des dialogs pour modifier les données d'un étudiant
+     * Utilise prompt() pour la saisie
+     */
     function openModifyModal(id, name, email, phone, specialty) {
       const newName = prompt(`Modifier le nom (actuel: ${name}):`, name);
       if (newName === null) return;
@@ -473,10 +546,14 @@
       const newSpecialty = prompt(`Modifier la spécialité (actuel: ${specialty}):`, specialty || '');
       if (newSpecialty === null) return;
 
+      // Envoyer les modification au serveur
       modifyStudent(id, newName, newEmail, newPhone, newSpecialty);
     }
 
-    // Modifier un étudiant avec la fonction PATCH (avec le bug intentionnel)
+    /**
+     * FONCTION: modifyStudent()
+     * Envoie une requête PATCH pour modifier un étudiant
+     */
     async function modifyStudent(id, name, email, phone, specialty) {
       try {
         const response = await fetch(`/api/students/${id}`, {
@@ -490,7 +567,7 @@
         if (!response.ok) throw new Error('Erreur lors de la modification');
 
         const result = await response.json();
-        showAlert(`Étudiant modifié - Attention: Email et Spécialité peuvent être swappés (BUG!)`, 'success');
+        showAlert(`Étudiant modifié avec succès!`, 'success');
         console.log('Modification result:', result);
         loadStudents();
       } catch (error) {
